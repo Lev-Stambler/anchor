@@ -1,5 +1,6 @@
 use anchor_client::Cluster;
-use anchor_syn::idl::Idl;
+use anchor_lang::__private::ErrorCode;
+use anchor_syn::idl::{Idl, IdlErrorCode};
 use anyhow::{anyhow, Error, Result};
 use clap::Clap;
 use serde::{Deserialize, Serialize};
@@ -144,12 +145,13 @@ impl WithPath<Config> {
     pub fn read_all_programs(&self) -> Result<Vec<Program>> {
         let mut r = vec![];
         for path in self.get_program_list()? {
-            let idl = anchor_syn::idl::file::parse(path.join("src/lib.rs"))?;
+            let (idl, error_codes) = anchor_syn::idl::file::parse(path.join("src/lib.rs"))?;
             let lib_name = Manifest::from_path(&path.join("Cargo.toml"))?.lib_name()?;
             r.push(Program {
                 lib_name,
                 path,
                 idl,
+                error_codes,
             });
         }
         Ok(r)
@@ -468,6 +470,7 @@ pub struct Program {
     // Canonicalized path to the program directory.
     pub path: PathBuf,
     pub idl: Option<Idl>,
+    pub error_codes: Option<Vec<IdlErrorCode>>,
 }
 
 impl Program {

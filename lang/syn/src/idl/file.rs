@@ -12,18 +12,30 @@ const DERIVE_NAME: &str = "Accounts";
 // TODO: sharee this with `anchor_lang` crate.
 const ERROR_CODE_OFFSET: u32 = 300;
 
-// Parse an entire interface file.
-pub fn parse(filename: impl AsRef<Path>) -> Result<Option<Idl>> {
+// Parse an entire interface file. Return either the full idl or just the error codes
+pub fn parse(filename: impl AsRef<Path>) -> Result<(Option<Idl>, Option<Vec<IdlErrorCode>>)> {
     let ctx = CrateContext::parse(filename)?;
 
+    let error = parse_error_enum(&ctx).map(|mut e| error::parse(&mut e, None));
+    let error_codes = error.as_ref().map(|e| {
+        e.codes
+            .iter()
+            .map(|code| IdlErrorCode {
+                code: ERROR_CODE_OFFSET + code.id,
+                name: code.ident.to_string(),
+                msg: code.msg.clone(),
+            })
+            .collect::<Vec<IdlErrorCode>>()
+    });
+    println!("ERRRORS {:?}", error);
+
     let program_mod = match parse_program_mod(&ctx) {
-        None => return Ok(None),
+        None => return Ok((None, error_codes)),
         Some(m) => m,
     };
     let p = program::parse(program_mod)?;
 
     let accs = parse_account_derives(&ctx);
-
     let state = match p.state {
         None => None,
         Some(state) => match state.ctor_and_anchor {
@@ -128,17 +140,6 @@ pub fn parse(filename: impl AsRef<Path>) -> Result<Option<Idl>> {
             }
         },
     };
-    let error = parse_error_enum(&ctx).map(|mut e| error::parse(&mut e, None));
-    let error_codes = error.as_ref().map(|e| {
-        e.codes
-            .iter()
-            .map(|code| IdlErrorCode {
-                code: ERROR_CODE_OFFSET + code.id,
-                name: code.ident.to_string(),
-                msg: code.msg.clone(),
-            })
-            .collect::<Vec<IdlErrorCode>>()
-    });
 
     let instructions = p
         .ixs
@@ -223,21 +224,26 @@ pub fn parse(filename: impl AsRef<Path>) -> Result<Option<Idl>> {
         }
     }
 
-    Ok(Some(Idl {
-        version: "0.0.0".to_string(),
-        name: p.name.to_string(),
-        state,
-        instructions,
-        types,
-        accounts,
-        events: if events.is_empty() {
-            None
-        } else {
-            Some(events)
-        },
-        errors: error_codes,
-        metadata: None,
-    }))
+    Ok((
+        Some(
+            Idl {
+                version: "0.0.0".to_string(),
+                name: p.name.to_string(),
+                state,
+                instructions,
+                types,
+                accounts,
+                events: if events.is_empty() {
+                    None
+                } else {
+                    Some(events)
+                },
+                errors: error_codes,
+                metadata: None,
+            },
+        ),
+        None,
+    ))
 }
 
 // Parse the main program mod.

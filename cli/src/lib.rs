@@ -4,7 +4,7 @@ use crate::config::{
 use anchor_client::Cluster;
 use anchor_lang::idl::{IdlAccount, IdlInstruction};
 use anchor_lang::{AccountDeserialize, AnchorDeserialize, AnchorSerialize};
-use anchor_syn::idl::Idl;
+use anchor_syn::idl::{Idl, IdlErrorCode};
 use anyhow::{anyhow, Context, Result};
 use clap::Clap;
 use flate2::read::ZlibDecoder;
@@ -966,7 +966,7 @@ fn fetch_idl(cfg_override: &ConfigOverride, idl_addr: Pubkey) -> Result<Idl> {
 
 fn extract_idl(file: &str) -> Result<Option<Idl>> {
     let file = shellexpand::tilde(file);
-    anchor_syn::idl::file::parse(&*file)
+    anchor_syn::idl::file::parse(&*file).map(|r| r.0)
 }
 
 fn idl(cfg_override: &ConfigOverride, subcmd: IdlCommand) -> Result<()> {
@@ -1266,7 +1266,12 @@ fn idl_fetch(cfg_override: &ConfigOverride, address: Pubkey, out: Option<String>
     write_idl(&idl, out)
 }
 
-fn write_dummy_idl(name: String, program_address: String, out: OutFile) -> Result<()> {
+fn write_dummy_idl(
+    name: String,
+    program_address: String,
+    error_codes: Option<Vec<IdlErrorCode>>,
+    out: OutFile,
+) -> Result<()> {
     let metadata = serde_json::to_value(IdlTestMetadata {
         address: program_address,
     })?;
@@ -1279,7 +1284,7 @@ fn write_dummy_idl(name: String, program_address: String, out: OutFile) -> Resul
         accounts: vec![],
         types: vec![],
         events: None,
-        errors: None,
+        errors: error_codes,
     };
     let idl_json = serde_json::to_string_pretty(&idl)?;
     match out {
@@ -1395,6 +1400,13 @@ fn genesis_flags(cfg: &WithPath<Config>) -> Result<Vec<String>> {
     let programs = cfg.programs.get(&Cluster::Localnet);
 
     let mut flags = Vec::new();
+    println!(
+        "LEV's COMMENT ALL PROGRAMS {:#?},",
+        cfg.read_all_programs()?
+            .iter()
+            .map(|v| format!("name: {}, idl: {:?}", v.lib_name.clone(), v.idl))
+            .collect::<Vec<String>>()
+    );
     for mut program in cfg.read_all_programs()? {
         let binary_path = program.binary_path().display().to_string();
 
@@ -1428,7 +1440,7 @@ fn genesis_flags(cfg: &WithPath<Config>) -> Result<Vec<String>> {
                     .with_extension("json"),
             );
             // Persist it.
-            write_dummy_idl(program.lib_name, address, idl_out)?;
+            write_dummy_idl(program.lib_name, address, program.error_codes, idl_out)?;
         }
     }
     if let Some(test) = cfg.test.as_ref() {
