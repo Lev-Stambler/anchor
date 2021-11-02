@@ -14,6 +14,7 @@ use rand::rngs::OsRng;
 use reqwest::blocking::multipart::{Form, Part};
 use reqwest::blocking::Client;
 use serde::{Deserialize, Serialize};
+use serde_json::json;
 use solana_client::rpc_client::RpcClient;
 use solana_client::rpc_config::RpcSendTransactionConfig;
 use solana_program::instruction::{AccountMeta, Instruction};
@@ -1265,6 +1266,29 @@ fn idl_fetch(cfg_override: &ConfigOverride, address: Pubkey, out: Option<String>
     write_idl(&idl, out)
 }
 
+fn write_dummy_idl(name: String, program_address: String, out: OutFile) -> Result<()> {
+    let metadata = serde_json::to_value(IdlTestMetadata {
+        address: program_address,
+    })?;
+    let idl: Idl = Idl {
+        version: "x.x.x".to_string(),
+        name: name,
+        instructions: vec![],
+        metadata: Some(metadata),
+        state: None,
+        accounts: vec![],
+        types: vec![],
+        events: None,
+        errors: None,
+    };
+    let idl_json = serde_json::to_string_pretty(&idl)?;
+    match out {
+        OutFile::Stdout => println!("{}", idl_json),
+        OutFile::File(out) => std::fs::write(out, idl_json)?,
+    };
+    Ok(())
+}
+
 fn write_idl(idl: &Idl, out: OutFile) -> Result<()> {
     let idl_json = serde_json::to_string_pretty(idl)?;
     match out {
@@ -1390,11 +1414,21 @@ fn genesis_flags(cfg: &WithPath<Config>) -> Result<Vec<String>> {
             // Add program address to the IDL.
             idl.metadata = Some(serde_json::to_value(IdlTestMetadata { address })?);
 
+            let idl_out = OutFile::File(
+                PathBuf::from("target/idl")
+                    .join(&idl.name)
+                    .with_extension("json"),
+            );
             // Persist it.
-            let idl_out = PathBuf::from("target/idl")
-                .join(&idl.name)
-                .with_extension("json");
-            write_idl(idl, OutFile::File(idl_out))?;
+            write_idl(idl, idl_out)?;
+        } else {
+            let idl_out = OutFile::File(
+                PathBuf::from("target/idl")
+                    .join(&program.lib_name)
+                    .with_extension("json"),
+            );
+            // Persist it.
+            write_dummy_idl(program.lib_name, address, idl_out)?;
         }
     }
     if let Some(test) = cfg.test.as_ref() {

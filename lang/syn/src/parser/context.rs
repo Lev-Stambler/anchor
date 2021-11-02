@@ -6,6 +6,7 @@ use syn::parse::{Error as ParseError, Result as ParseResult};
 /// Crate parse context
 ///
 /// Keeps track of modules defined within a crate.
+#[derive(Debug)]
 pub struct CrateContext {
     modules: HashMap<String, ParsedModule>,
 }
@@ -51,6 +52,7 @@ impl<'krate> ModuleContext<'krate> {
         self.detail.items.iter()
     }
 }
+#[derive(Debug)]
 struct ParsedModule {
     name: String,
     file: PathBuf,
