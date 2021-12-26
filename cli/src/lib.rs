@@ -1599,6 +1599,7 @@ fn write_dummy_idl(
         types: vec![],
         events: None,
         errors: error_codes,
+        constants: vec![],
     };
     let idl_json = serde_json::to_string_pretty(&idl)?;
     match out {
