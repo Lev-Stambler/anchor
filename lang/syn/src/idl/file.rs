@@ -27,7 +27,6 @@ pub fn parse(filename: impl AsRef<Path>) -> Result<(Option<Idl>, Option<Vec<IdlE
             })
             .collect::<Vec<IdlErrorCode>>()
     });
-    println!("ERRRORS {:?}", error);
 
     let program_mod = match parse_program_mod(&ctx) {
         None => return Ok((None, error_codes)),

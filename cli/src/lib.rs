@@ -1400,13 +1400,6 @@ fn genesis_flags(cfg: &WithPath<Config>) -> Result<Vec<String>> {
     let programs = cfg.programs.get(&Cluster::Localnet);
 
     let mut flags = Vec::new();
-    println!(
-        "LEV's COMMENT ALL PROGRAMS {:#?},",
-        cfg.read_all_programs()?
-            .iter()
-            .map(|v| format!("name: {}, idl: {:?}", v.lib_name.clone(), v.idl))
-            .collect::<Vec<String>>()
-    );
     for mut program in cfg.read_all_programs()? {
         let binary_path = program.binary_path().display().to_string();
 

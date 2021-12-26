@@ -281,6 +281,9 @@ impl Deref for Mint {
 // Field parsers to save compute. All account validation is assumed to be done
 // outside of these methods.
 pub mod accessor {
+    use anchor_lang::Key;
+    use solana_program::msg;
+
     use super::*;
 
     pub fn amount(account: &AccountInfo) -> Result<u64, ProgramError> {

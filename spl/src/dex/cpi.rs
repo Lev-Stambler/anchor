@@ -177,6 +177,7 @@ pub fn initialize_market<'info>(
         ctx.accounts.pc_vault.key,
         authority.map(|r| r.key),
         prune_authority.map(|r| r.key),
+        // None,
         ctx.accounts.bids.key,
         ctx.accounts.asks.key,
         ctx.accounts.req_q.key,

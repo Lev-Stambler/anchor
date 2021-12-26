@@ -22,6 +22,9 @@ anchor-debug = [
     "anchor-derive-accounts/anchor-debug"
 ]
 
+[profile.release.build-override]
+opt-level = 3
+
 [dependencies]
 anchor-attribute-access-control = { path = "./attribute/access-control", version = "0.13.2" }
 anchor-attribute-account = { path = "./attribute/account", version = "0.13.2" }
